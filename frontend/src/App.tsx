@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import AskForm from "./components/AskForm";
 import { askStream } from "./api/client";
-
-type Source = { chunk: string; score: number; index: number };
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  sources?: Source[];
-};
+import { Message, Source } from "./types";
+import Container from "@mui/material/Container";
+import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Chip from "@mui/material/Chip";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -24,18 +24,23 @@ export default function App() {
     try {
       const raw = localStorage.getItem("hp_chat_messages");
       if (raw) setMessages(JSON.parse(raw));
-    } catch {}
+    } catch {
+      // no messages in local storage
+    }
   }, []);
 
   useEffect(() => {
     try {
       localStorage.setItem("hp_chat_messages", JSON.stringify(messages));
-    } catch {}
+    } catch {
+      // failed to save messages to local storage
+    }
   }, [messages]);
 
   const onAsk = async (q: string) => {
     setLoading(true);
     setThinking(true);
+    const startTs = performance.now();
     const userMsg: Message = { id: uid(), role: "user", content: q };
     setMessages((prev) => [...prev, userMsg]);
     try {
@@ -51,6 +56,10 @@ export default function App() {
           if (!created) {
             created = true;
             setThinking(false);
+            console.info(
+              "perf:firstTokenMs",
+              Math.round(performance.now() - startTs)
+            );
             setMessages((prev) => [
               ...prev,
               {
@@ -68,10 +77,10 @@ export default function App() {
             );
           }
         },
-        (_end) => {}
+        () => {}
       );
-    } catch (e: any) {
-      const msg = e?.message || String(e);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       setMessages((prev) => [
         ...prev,
         { id: uid(), role: "assistant", content: msg },
@@ -84,73 +93,109 @@ export default function App() {
 
   return (
     <div className="layout single">
-      <main className="chat">
-        <header className="brand">
-          <div className="title">Harry Potter and the Sorcerer's Stone Q&A</div>
-          <div className="subtitle">Ask questions strictly from Chapter 1.</div>
-        </header>
-        <div className="messages">
-          {messages.map((m) => (
-            <div key={m.id} className={`message ${m.role}`}>
-              <div className="bubble">
-                <div>{m.content || ""}</div>
-                {showSources &&
-                  m.role === "assistant" &&
-                  m.sources &&
-                  m.sources.length > 0 && (
-                    <div className="sources">
-                      {m.sources.map((s) => (
-                        <details key={s.index}>
-                          <summary>
-                            #{s.index} score {s.score.toFixed(3)}
-                          </summary>
-                          <pre>{s.chunk}</pre>
-                        </details>
-                      ))}
-                    </div>
-                  )}
+      <Container maxWidth="lg" sx={{ px: 0 }}>
+        <main className="chat">
+          <Paper
+            elevation={8}
+            sx={{
+              borderBottomLeftRadius: 8,
+              borderBottomRightRadius: 8,
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 0,
+            }}
+            className="brand"
+          >
+            <Typography variant="h6" className="title">
+              Harry Potter and the Sorcerer's Stone Q&A
+            </Typography>
+            <Typography variant="body2" className="subtitle">
+              Ask questions strictly from Chapter 1.
+            </Typography>
+          </Paper>
+          <Box className="messages">
+            {messages.map((m) => (
+              <div key={m.id} className={`message ${m.role}`}>
+                <Paper
+                  className="bubble"
+                  sx={{
+                    backgroundColor:
+                      m.role === "user" ? "primary.dark" : "background.paper",
+                    color: m.role === "user" ? "#fff" : "text.primary",
+                    borderColor: m.role === "user" ? "primary.dark" : "divider",
+                    borderStyle: "solid",
+                    borderWidth: 1,
+                  }}
+                >
+                  <div>{m.content || ""}</div>
+                  {showSources &&
+                    m.role === "assistant" &&
+                    m.sources &&
+                    m.sources.length > 0 && (
+                      <div className="sources">
+                        {m.sources.map((s) => (
+                          <details key={s.index}>
+                            <summary>
+                              #{s.index} score {s.score.toFixed(3)}
+                            </summary>
+                            <pre>{s.chunk}</pre>
+                          </details>
+                        ))}
+                      </div>
+                    )}
+                </Paper>
               </div>
-            </div>
-          ))}
-          {thinking && (
-            <div className="message assistant">
-              <div className="bubble loading">
-                <div className="dots" aria-live="polite" aria-label="Thinking">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="controls">
-          <div className="toggles">
-            <label>
-              <input
-                type="checkbox"
-                checked={showSources}
-                onChange={(e) => setShowSources(e.target.checked)}
-              />
-              <span style={{ marginLeft: 4 }}>Show sources</span>
-            </label>
-          </div>
-          <div className="suggestions" aria-label="Try these queries">
-            {[
-              "Who is Harry Potter?",
-              "Where do the Dursleys live?",
-              "Who leaves Harry at the Dursleys?",
-              "What does 'the boy who lived' refer to?",
-              "Who are Dumbledore and McGonagall?",
-            ].map((s) => (
-              <button key={s} className="chip" onClick={() => onAsk(s)}>
-                {s}
-              </button>
             ))}
-          </div>
-          <AskForm onAsk={onAsk} loading={loading} />
-        </div>
-      </main>
+            {thinking && (
+              <div className="message assistant">
+                <Paper className="bubble loading">
+                  <div
+                    className="dots"
+                    aria-live="polite"
+                    aria-label="Thinking"
+                  >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </Paper>
+              </div>
+            )}
+          </Box>
+          <Paper elevation={8} className="controls">
+            <Box className="toggles">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showSources}
+                    onChange={(e) => setShowSources(e.target.checked)}
+                  />
+                }
+                label="Show sources"
+              />
+            </Box>
+            <Box className="suggestions" aria-label="Try these queries">
+              {[
+                "Who is Harry Potter?",
+                "Where do the Dursleys live?",
+                "Who leaves Harry at the Dursleys?",
+                "What does 'the boy who lived' refer to?",
+                "Who are Dumbledore and McGonagall?",
+                "Who turns into a cat at the beginning?",
+                "What device does Dumbledore use to dim the lights?",
+              ].map((s) => (
+                <Chip
+                  key={s}
+                  label={s}
+                  onClick={() => onAsk(s)}
+                  clickable
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+            <AskForm onAsk={onAsk} loading={loading} />
+          </Paper>
+        </main>
+      </Container>
     </div>
   );
 }
