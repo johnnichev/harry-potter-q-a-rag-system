@@ -22,22 +22,6 @@ export async function ask(question: string): Promise<string> {
   return await res.text();
 }
 
-export async function askMeta(
-  question: string
-): Promise<{ answer: string; sources: Source[] }> {
-  const res = await fetch(`${base}/ask`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      question,
-      stream: false,
-      include_sources: true,
-      format: "json",
-    }),
-  });
-  await check(res);
-  return (await res.json()) as { answer: string; sources: Source[] };
-}
 
 export async function askStream(
   question: string,

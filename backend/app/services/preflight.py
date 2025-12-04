@@ -1,9 +1,16 @@
+"""Startup checks for local Ollama setup.
+
+Ensures the embedding and generation models are runnable before building the
+RAG service. When unavailable, the API reports a not-ready status.
+"""
+
 import logging
 import ollama
 from ..config import OLLAMA_BASE_URL, EMBED_MODEL, LLM_MODEL
 
 
 def check_models() -> bool:
+    """Return True when both embedding and generation calls succeed."""
     logger = logging.getLogger("rag")
     client = ollama.Client(host=OLLAMA_BASE_URL)
     logger.info("Preflight: checking Ollama at %s", OLLAMA_BASE_URL)

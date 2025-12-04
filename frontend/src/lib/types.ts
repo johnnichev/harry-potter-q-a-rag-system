@@ -1,6 +1,3 @@
-/*
-  Adheres to project-instructions.md: centralized shared types under src/lib.
-*/
 export type Source = { chunk: string; score: number; index: number };
 export type Message = {
   id: string;

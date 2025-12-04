@@ -3,6 +3,12 @@ import numpy as np
 
 
 class InMemoryVectorStore:
+    """Small in-memory vector index with cosine similarity.
+
+    Embeddings are sanitized and L2-normalized at construction time to make
+    similarity stable and to avoid NaN/Inf issues propagating through math.
+    """
+
     def __init__(self, embeddings: np.ndarray, chunks: list[str]):
         self.logger = logging.getLogger("rag")
         # Sanitize embeddings to avoid NaN/Inf issues and clamp extremes
@@ -12,11 +18,17 @@ class InMemoryVectorStore:
         self.chunks = chunks
 
     def _normalize(self, m: np.ndarray) -> np.ndarray:
+        """Row-wise L2 normalization; protect against zero-norm rows."""
         norms = np.linalg.norm(m, axis=1, keepdims=True)
         norms = np.where(norms == 0, 1.0, norms)
         return m / norms
 
     def similar(self, query: np.ndarray, top_k: int) -> list[tuple[int, float]]:
+        """Return the top-k most similar chunk indices and scores.
+
+        Sanitizes the query, checks shape compatibility, normalizes, and then
+        computes cosine similarity via dot product on unit vectors.
+        """
         # Sanitize and normalize query
         q = np.nan_to_num(query, nan=0.0, posinf=0.0, neginf=0.0)
         q = np.clip(q, -1e6, 1e6)

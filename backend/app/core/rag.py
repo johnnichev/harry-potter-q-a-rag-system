@@ -1,6 +1,8 @@
-"""
-Adheres to project-instructions.md: core orchestration separated under app/core.
-Provides RAGService for retrieval and generation.
+"""Core orchestration for the RAG pipeline.
+
+Loads the chapter text, builds chunks and embeddings, and wires a simple
+in-memory vector store for retrieval. Streaming generation is handled in the
+services layer.
 """
 import time
 import logging
@@ -15,10 +17,12 @@ from ..services.chunker import chunk_text
 from ..services.embedding import embed_texts, embed_query
 from ..services.vectorstore import InMemoryVectorStore
 from ..services.retriever import retrieve
-from ..services.generator import generate_answer
+from ..services.generator import stream_answer  # used by API
 
 
 class RAGService:
+    """Bootstrap chapter data and provide retrieval over an in-memory index."""
+
     def __init__(self):
         logger = logging.getLogger("rag")
         t0 = time.time()
@@ -38,50 +42,8 @@ class RAGService:
         logger.info("RAG: startup completed (%.2fs total)", t2 - t0)
         self._answer_cache: dict[str, dict] = {}
 
-    def ask(self, question: str) -> str:
-        logger = logging.getLogger("rag")
-        if not question.strip():
-            return ""
-        if question in self._answer_cache:
-            return self._answer_cache[question]["answer"]
-        t0 = time.time()
-        logger.info("RAG: /ask start: '%s'", question)
-        qv = embed_query(question)
-        hits = retrieve(self.store, qv, TOP_K)
-        contexts = [h[0] for h in hits]
-        logger.info(
-            "RAG: retrieved %d hits: %s",
-            len(hits),
-            ", ".join([f"{i}:{s:.3f}" for _, s, i in hits]) if hits else "none",
-        )
-        t1 = time.time()
-        ans = generate_answer(question, contexts)
-        t2 = time.time()
-        logger.info("RAG: generation done (retrieve=%.2fs, generate=%.2fs)", t1 - t0, t2 - t1)
-        self._answer_cache[question] = {"answer": ans, "hits": hits}
-        return ans
-
-    def ask_meta(self, question: str):
-        logger = logging.getLogger("rag")
-        logger.info("RAG: /ask_meta start: '%s'", question)
-        record = self._answer_cache.get(question)
-        if record is None:
-            qv = embed_query(question)
-            hits = retrieve(self.store, qv, TOP_K)
-            contexts = [h[0] for h in hits]
-            ans = generate_answer(question, contexts)
-            record = {"answer": ans, "hits": hits}
-            self._answer_cache[question] = record
-        ans = record["answer"]
-        hits = record["hits"]
-        logger.info(
-            "RAG: /ask_meta retrieved %d hits: %s",
-            len(hits),
-            ", ".join([f"{i}:{s:.3f}" for _, s, i in hits]) if hits else "none",
-        )
-        return {"answer": ans, "sources": [{"chunk": c, "score": float(s), "index": int(i)} for c, s, i in hits]}
-
     def retrieve_hits(self, question: str):
+        """Return raw retrieval hits for a question as (chunk, score, index)."""
         logger = logging.getLogger("rag")
         logger.info("RAG: retrieve_hits for '%s'", question)
         qv = embed_query(question)
