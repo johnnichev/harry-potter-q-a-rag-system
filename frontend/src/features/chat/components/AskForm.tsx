@@ -4,20 +4,20 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 
 type Props = {
-  onAsk: (_q: string) => Promise<void>;
+  onAsk: (_question: string) => Promise<void>;
   loading: boolean;
 };
 
 export default function AskForm({ onAsk, loading }: Props) {
-  const [q, setQ] = useState("");
+  const [question, setQuestion] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!q.trim()) return;
-    const toSend = q;
-    setQ("");
-    await onAsk(toSend);
+    if (!question.trim()) return;
+    const questionToSend = question;
+    setQuestion("");
+    await onAsk(questionToSend);
     inputRef.current?.focus();
   };
 
@@ -34,8 +34,8 @@ export default function AskForm({ onAsk, loading }: Props) {
         fullWidth
         label="Question"
         placeholder="Ask the chapter"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
         disabled={loading}
         size="small"
         variant="outlined"
@@ -44,7 +44,7 @@ export default function AskForm({ onAsk, loading }: Props) {
         type="submit"
         variant="contained"
         color="primary"
-        disabled={loading || !q.trim()}
+        disabled={loading || !question.trim()}
         aria-busy={loading}
         sx={{ minWidth: 140 }}
       >

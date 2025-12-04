@@ -21,11 +21,11 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const MAX_HISTORY = 100;
 
-  const onAsk = async (q: string) => {
+  const onAsk = async (question: string) => {
     setLoading(true);
     setThinking(true);
     const startTs = performance.now();
-    const userMsg: Message = { id: uid(), role: "user", content: q };
+    const userMsg: Message = { id: uid(), role: "user", content: question };
     setMessages((prev) => {
       const next = [...prev, userMsg];
       return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
@@ -35,11 +35,11 @@ export default function App() {
       const assistantId = uid();
       let startSources: Source[] = [];
       await askStream(
-        q,
+        question,
         (start) => {
           startSources = start?.sources || [];
         },
-        (t) => {
+        (tokenText) => {
           if (!created) {
             created = true;
             setThinking(false);
@@ -51,7 +51,7 @@ export default function App() {
               const assistantMsg: Message = {
                 id: assistantId,
                 role: "assistant",
-                content: t,
+                content: tokenText,
                 sources: startSources,
               };
               const next: Message[] = [...prev, assistantMsg];
@@ -59,7 +59,7 @@ export default function App() {
             });
           } else {
             setMessages((prev) => prev.map((m) =>
-              m.id === assistantId ? { ...m, content: m.content + t } : m
+              m.id === assistantId ? { ...m, content: m.content + tokenText } : m
             ));
           }
         },

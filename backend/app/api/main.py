@@ -1,16 +1,25 @@
+"""HTTP API entrypoint (FastAPI).
+
+Exposes:
+- GET /health: readiness and simple diagnostics
+- POST /ask: streaming answers with sources via Server-Sent Events (SSE)
+
+Design:
+- Lifespan handler initializes the RAG service on startup after preflight
+  checks against the local Ollama server.
+- `/ask` constructs an SSE stream with three event types: `start`, `token`, `end`.
+  - `start`: sends retrieved sources for transparency
+  - `token`: emits incremental text from the generator
+  - `end`: provides the final answer and caches it for repeated queries
 """
-Adheres to project-instructions.md: minimal API, clear module boundaries.
-This entrypoint is organized under app/api with core and services separated.
-"""
-import os
 import json
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 
-from ..config.config import CORS_ORIGINS
+from ..config.config import CORS_ORIGINS, EMBED_MODEL, LLM_MODEL
 from ..core.schemas import AskRequest
 from ..core.rag import RAGService
 from ..services.generator import stream_answer
@@ -60,8 +69,8 @@ def health():
         }
     return {
         "status": "ok",
-        "embed_model": os.getenv("EMBED_MODEL", "nomic-embed-text"),
-        "llm_model": os.getenv("LLM_MODEL", "llama3.1:8b"),
+        "embed_model": EMBED_MODEL,
+        "llm_model": LLM_MODEL,
         "chunks": len(rag_service.chunks),
     }
 
@@ -75,23 +84,29 @@ def ask(req: AskRequest):
     if not req.question:
         raise HTTPException(status_code=400, detail="Question required")
     try:
-        hits = rag_service.retrieve_hits(req.question)
+        # Retrieve sources up front and format them for the `start` event
+        retrievalHits = rag_service.retrieve_hits(req.question)
         sources = [
             {"index": int(i), "score": float(s), "chunk": c}
-            for c, s, i in hits
+            for c, s, i in retrievalHits
         ]
+
+        # SSE generator: start -> token* -> end
         def sse():
             start_payload = {"sources": sources}
             yield f"event: start\ndata: {json.dumps(start_payload)}\n\n"
-            contexts = [c for c, _, _ in hits]
-            final = []
+
+            contexts = [c for c, _, _ in retrievalHits]
+            accumulatedTokens = []
             for token in stream_answer(req.question, contexts):
-                final.append(token)
+                accumulatedTokens.append(token)
                 yield f"event: token\ndata: {json.dumps(token)}\n\n"
-            answer = ("".join(final)).strip()
-            rag_service._answer_cache[req.question] = {"answer": answer, "hits": hits}
+
+            answer = ("".join(accumulatedTokens)).strip()
+            rag_service._answer_cache[req.question] = {"answer": answer, "hits": retrievalHits}
             end_payload = {"answer": answer}
             yield f"event: end\ndata: {json.dumps(end_payload)}\n\n"
+
         return StreamingResponse(sse(), media_type="text/event-stream")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

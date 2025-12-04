@@ -26,28 +26,45 @@ class InMemoryVectorStore:
     def similar(self, query: np.ndarray, top_k: int) -> list[tuple[int, float]]:
         """Return the top-k most similar chunk indices and scores.
 
-        Sanitizes the query, checks shape compatibility, normalizes, and then
-        computes cosine similarity via dot product on unit vectors.
+        Steps:
+        1) Sanitize inputs (replace NaN/Inf, clamp extremes)
+        2) Validate query dimensionality against embedding dimension
+        3) L2-normalize the query to turn dot product into cosine similarity
+        4) Compute similarities and pick top-k with stable ordering
         """
-        # Sanitize and normalize query
-        q = np.nan_to_num(query, nan=0.0, posinf=0.0, neginf=0.0)
-        q = np.clip(q, -1e6, 1e6)
-        qn = np.linalg.norm(q)
-        if qn == 0 or not np.isfinite(qn):
-            self.logger.warning("VectorStore: query norm invalid (%.4f); returning empty hits", qn)
-            return []
-        # Shape validation
-        if q.shape[0] != self.embeddings.shape[1]:
+
+        # 1) Sanitize query values to avoid invalid math downstream
+        queryVector = np.nan_to_num(query, nan=0.0, posinf=0.0, neginf=0.0)
+        queryVector = np.clip(queryVector, -1e6, 1e6)
+
+        # Compute norm and early-exit on invalid vectors
+        queryNorm = np.linalg.norm(queryVector)
+        if queryNorm == 0 or not np.isfinite(queryNorm):
             self.logger.warning(
-                "VectorStore: query dim %d != embed dim %d; returning empty hits",
-                q.shape[0], self.embeddings.shape[1]
+                "VectorStore: query norm invalid (%.4f); returning empty hits",
+                queryNorm,
             )
             return []
-        q = q / qn
-        # Cosine similarity via dot product
-        sims = self.embeddings @ q
-        sims = np.nan_to_num(sims, nan=-1.0, posinf=-1.0, neginf=-1.0)
-        # Clamp top_k and use stable argsort for deterministic ordering
-        k = max(0, min(int(top_k), sims.shape[0]))
-        idxs = np.argsort(-sims, kind='stable')[:k]
-        return [(int(i), float(sims[int(i)])) for i in idxs]
+
+        # 2) Ensure query dimension matches embedding dimension
+        if queryVector.shape[0] != self.embeddings.shape[1]:
+            self.logger.warning(
+                "VectorStore: query dim %d != embed dim %d; returning empty hits",
+                queryVector.shape[0],
+                self.embeddings.shape[1],
+            )
+            return []
+
+        # 3) Normalize to unit length so dot-product yields cosine similarity
+        queryVector = queryVector / queryNorm
+
+        # 4) Dot product over unit vectors = cosine similarity
+        similarities = self.embeddings @ queryVector
+        similarities = np.nan_to_num(similarities, nan=-1.0, posinf=-1.0, neginf=-1.0)
+
+        # Select top-k indices; clamp bounds and ensure deterministic ordering
+        topK = max(0, min(int(top_k), similarities.shape[0]))
+        topIndices = np.argsort(-similarities, kind="stable")[:topK]
+
+        # Return (index, score) pairs as ints/floats for downstream usage
+        return [(int(i), float(similarities[int(i)])) for i in topIndices]

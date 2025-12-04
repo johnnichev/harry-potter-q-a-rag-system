@@ -7,7 +7,6 @@ services layer.
 import time
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -17,7 +16,6 @@ from ..services.chunker import chunk_text
 from ..services.embedding import embed_texts, embed_query
 from ..services.vectorstore import InMemoryVectorStore
 from ..services.retriever import retrieve
-from ..services.generator import stream_answer  # used by API
 
 
 class RAGService:

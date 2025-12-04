@@ -5,16 +5,16 @@ import { Source } from '../../../lib/types'
 
 vi.mock('../../../lib/api/client', () => ({
   askStream: async (
-    _q: string,
+    _question: string,
     onStart: (_s: { sources: Source[] }) => void,
-    onToken: (_t: string) => void,
+    onToken: (_token: string) => void,
     _onEnd: (_payload: {}) => void
   ) => {
     onStart({ sources: [] })
-    await act(async () => {
-      onToken('Hello')
-      onToken(', world')
-    })
+    await Promise.resolve()
+    onToken('Hello')
+    await Promise.resolve()
+    onToken(', world')
   }
 }))
 
@@ -22,9 +22,7 @@ test('Shows loading dots before first token and streams assistant message', asyn
   render(<App />)
   const input = screen.getByRole('textbox', { name: /question/i })
   const button = screen.getByRole('button', { name: /ask chapter/i })
-  await act(async () => {
-    await userEvent.type(input, 'Test question')
-    await userEvent.click(button)
-  })
+  await userEvent.type(input, 'Test question')
+  await userEvent.click(button)
   expect(await screen.findByText('Hello, world')).toBeInTheDocument()
 })

@@ -9,6 +9,20 @@ def _client() -> ollama.Client:
     return ollama.Client(host=OLLAMA_BASE_URL)
 
 
+def _embed_single(client: ollama.Client, text: str) -> np.ndarray:
+    """Embed a single piece of text and return a float32 vector.
+
+    Raises RuntimeError if the embedding call fails.
+    """
+    try:
+        result = client.embeddings(model=EMBED_MODEL, prompt=text)
+        return np.array(result["embedding"], dtype=np.float32)
+    except Exception as exc:
+        logger = logging.getLogger("rag")
+        logger.error("Embedding failed: %s", exc)
+        raise RuntimeError(f"embedding failed: {exc}")
+
+
 def embed_texts(texts: list[str]) -> np.ndarray:
     """Compute embeddings for a batch of chunk strings.
 
@@ -17,20 +31,18 @@ def embed_texts(texts: list[str]) -> np.ndarray:
     """
     client = _client()
     logger = logging.getLogger("rag")
-    vectors = []
-    for i, t in enumerate(texts):
-        res = client.embeddings(model=EMBED_MODEL, prompt=t)
-        vectors.append(np.array(res["embedding"], dtype=np.float32))
-        if (i + 1) % 100 == 0:
-            logger.info("Embeddings: %d/%d", i + 1, len(texts))
+    vectors: list[np.ndarray] = []
+    for index, textItem in enumerate(texts):
+        vectors.append(_embed_single(client, textItem))
+        if (index + 1) % 100 == 0:
+            logger.info("Embeddings: %d/%d", index + 1, len(texts))
     return np.stack(vectors, axis=0)
 
 
 def embed_query(text: str) -> np.ndarray:
     """Compute a single query embedding as float32 vector."""
     client = _client()
-    res = client.embeddings(model=EMBED_MODEL, prompt=text)
-    return np.array(res["embedding"], dtype=np.float32)
+    return _embed_single(client, text)
 """Embedding helpers for Ollama.
 
 Provides thin wrappers to compute embeddings for chunks and queries using the

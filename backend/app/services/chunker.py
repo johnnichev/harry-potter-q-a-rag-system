@@ -13,14 +13,24 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
 
     Returns a list of chunk strings in reading order.
     """
+    # Normalize parameters to avoid accidental negatives/zeros
+    size = max(int(chunk_size), 1)
+    carry = max(int(overlap), 0)
+
     words = text.split()
-    chunks = []
-    i = 0
-    n = len(words)
-    while i < n:
-        chunk_words = words[i : min(i + chunk_size, n)]
-        chunks.append(" ".join(chunk_words))
-        if i + chunk_size >= n:
+    chunks: list[str] = []
+    start_index = 0
+    total_words = len(words)
+
+    while start_index < total_words:
+        end_index = min(start_index + size, total_words)
+        current_slice = words[start_index:end_index]
+        chunks.append(" ".join(current_slice))
+
+        # Stop if we reached the end; otherwise advance with overlap
+        if end_index >= total_words:
             break
-        i += max(chunk_size - overlap, 1)
+        step = max(size - carry, 1)
+        start_index += step
+
     return chunks

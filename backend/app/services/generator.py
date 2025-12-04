@@ -25,26 +25,31 @@ def build_prompt(question: str, contexts: list[str]) -> str:
         "Answer succinctly. Do not reference context numbers or say 'From Context'. "
         "If the context is insufficient, respond: 'I cannot answer from the chapter.'\n\n"
     )
-    # Assemble contexts and enforce a character budget for stability
-    joined = []
-    used = 0
-    for c in contexts:
-        cstr = f"Context:\n{c}"
-        if used + len(cstr) > MAX_CONTEXT_CHARS:
-            # truncate remainder to fit budget
-            remaining = MAX_CONTEXT_CHARS - used
+
+    contextSection = assemble_contexts(contexts, MAX_CONTEXT_CHARS)
+    return f"{header}{contextSection}\n\nQuestion:\n{question}\n\nAnswer:"
+
+
+def assemble_contexts(contexts: list[str], budget: int) -> str:
+    """Join contexts into a single section within the provided char budget.
+
+    Truncates the last context if necessary to fit the budget, and returns
+    the final concatenated string.
+    """
+    segments: list[str] = []
+    usedChars = 0
+    for context in contexts:
+        contextBlock = f"Context:\n{context}"
+        nextSize = usedChars + len(contextBlock)
+        if nextSize > budget:
+            remaining = budget - usedChars
             if remaining > 0:
-                joined.append(cstr[:remaining])
-                used += remaining
+                segments.append(contextBlock[:remaining])
+                usedChars += remaining
             break
-        joined.append(cstr)
-        used += len(cstr)
-    ctx = "\n\n".join(joined)
-    return f"{header}{ctx}\n\nQuestion:\n{question}\n\nAnswer:"
-
-
-# Non-stream generation has been removed; streaming is the default behavior.
-
+        segments.append(contextBlock)
+        usedChars += len(contextBlock)
+    return "\n\n".join(segments)
 
 def stream_answer(question: str, contexts: list[str]):
     """Yield response tokens from the model for the given question and contexts."""
@@ -52,11 +57,15 @@ def stream_answer(question: str, contexts: list[str]):
     prompt = build_prompt(question, contexts)
     logger = logging.getLogger("rag")
     logger.info("Gen(stream): model=%s ctx=%d prompt_len=%d", LLM_MODEL, len(contexts), len(prompt))
-    stream = client.generate(
-        model=LLM_MODEL,
-        prompt=prompt,
-        stream=True,
-        options={"num_predict": MAX_TOKENS, "temperature": 0, "seed": 1},
-    )
-    for s in stream:
-        yield s.get("response", "")
+    try:
+        stream = client.generate(
+            model=LLM_MODEL,
+            prompt=prompt,
+            stream=True,
+            options={"num_predict": MAX_TOKENS, "temperature": 0, "seed": 1},
+        )
+        for event in stream:
+            yield event.get("response", "")
+    except Exception as exc:
+        logger.error("Gen(stream) failed: %s", exc)
+        raise

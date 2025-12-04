@@ -78,15 +78,11 @@
   - /ask stream SSE: `curl -N -H 'Accept: text/event-stream' -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?"}' http://localhost:8000/ask`
   - Embeddings test (Ollama): `curl -s http://localhost:11434/api/embeddings -d '{"model":"all-minilm","prompt":"test"}'`
   - Generation test (Ollama): `curl -s http://localhost:11434/api/generate -d '{"model":"llama3.1:8b","prompt":"hello"}'`
-- Benchmark: `python backend/scripts/benchmark.py`
 
 ## Implementation Notes
 
-- Frontend now uses a single conversation thread stored in localStorage (`hp_chat_messages`).
-- Single consistent design with accessible contrast; no theme toggles.
 - Input clears and refocuses on send for fast follow-ups.
 - A loading indicator appears before first tokens with subtle animation.
-
 - Text is chunked with overlap to balance recall and latency.
 - Embeddings and vector index are precomputed at startup and kept in memory.
 
@@ -101,15 +97,13 @@
 - Frontend `Show sources` toggle to inspect retrieved context
 - In-memory query cache to accelerate repeated questions
 - Preflight model checks with graceful readiness reporting
-- Benchmark script `backend/scripts/benchmark.py` for local latency measurement
 
 ### Justification
 
 - Citations increase trust and explain model answers without altering the core flow.
-- Streaming reduces time-to-first-token and improves UX while keeping `/ask` unchanged.
+- Streaming reduces time-to-first-token and improves UX.
 - Query cache avoids repeated embedding/generation work for identical questions.
 - Preflight offers clear operational signals when Ollama or models are unavailable.
-- Benchmarking aids performance tuning and reporting.
 
 ## Troubleshooting
 
@@ -143,7 +137,6 @@ backend/
       logger.py        # Logging setup
   requirements.txt
   tests/               # Unit tests (pytest)
-  scripts/benchmark.py # Latency benchmark
 frontend/
   src/
     app/App.tsx        # Root app component
