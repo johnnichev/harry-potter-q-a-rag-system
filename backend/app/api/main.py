@@ -5,6 +5,7 @@ This entrypoint is organized under app/api with core and services separated.
 import os
 import json
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
@@ -17,7 +18,30 @@ from ..services.preflight import check_models
 from ..utils.logger import setup_logging
 
 logger = setup_logging()
-app = FastAPI()
+
+from typing import Optional
+rag_service: Optional[RAGService] = None
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    global rag_service
+    try:
+        logger.info("Startup: beginning service initialization")
+        if not check_models():
+            logger.error("Startup: preflight failed; RAG service will not start")
+            rag_service = None
+        else:
+            logger.info("Startup: building RAGService (loading text, chunking, embedding)")
+            rag_service = RAGService()
+            logger.info("Startup: RAGService ready")
+        yield
+    except Exception as e:
+        logger.exception("Startup: exception during initialization: %s", e)
+        raise e
+
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -25,26 +49,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from typing import Optional
-rag_service: Optional[RAGService] = None
-
-
-@app.on_event("startup")
-def startup_event():
-    global rag_service
-    try:
-        logger.info("Startup: beginning service initialization")
-        if not check_models():
-            logger.error("Startup: preflight failed; RAG service will not start")
-            rag_service = None
-            return
-        logger.info("Startup: building RAGService (loading text, chunking, embedding)")
-        rag_service = RAGService()
-        logger.info("Startup: RAGService ready")
-    except Exception as e:
-        logger.exception("Startup: exception during initialization: %s", e)
-        raise e
 
 
 @app.get("/health")
@@ -71,72 +75,26 @@ def ask(req: AskRequest):
     if not req.question:
         raise HTTPException(status_code=400, detail="Question required")
     try:
-        stream = True if req.stream is None else bool(req.stream)
-        include_sources = True if req.include_sources is None else bool(req.include_sources)
-        fmt = req.format or ("json" if stream else "text")
-
-        if stream:
-            hits = rag_service.retrieve_hits(req.question)
-            sources = [
-                {"index": int(i), "score": float(s), "chunk": c if include_sources else None}
-                for c, s, i in hits
-            ]
-            def sse():
-                start_payload = {"sources": sources}
-                yield f"event: start\ndata: {json.dumps(start_payload)}\n\n"
-                contexts = [c for c, _, _ in hits]
-                final = []
-                for token in stream_answer(req.question, contexts):
-                    final.append(token)
-                    yield f"event: token\ndata: {json.dumps(token)}\n\n"
-                answer = ("".join(final)).strip()
-                rag_service._answer_cache[req.question] = {"answer": answer, "hits": hits}
-                end_payload = {"answer": answer}
-                yield f"event: end\ndata: {json.dumps(end_payload)}\n\n"
-            return StreamingResponse(sse(), media_type="text/event-stream")
-        else:
-            record = rag_service._answer_cache.get(req.question)
-            if record is None:
-                meta = rag_service.ask_meta(req.question)
-                record = {"answer": meta["answer"], "hits": [(s["chunk"], s["score"], s["index"]) for s in meta["sources"]]}
-                rag_service._answer_cache[req.question] = record
-            sources = [
-                {"index": int(i), "score": float(s), "chunk": c if include_sources else None}
-                for c, s, i in record["hits"]
-            ]
-            if fmt == "json":
-                return {"answer": record["answer"], "sources": sources}
-            return PlainTextResponse(record["answer"])
+        hits = rag_service.retrieve_hits(req.question)
+        sources = [
+            {"index": int(i), "score": float(s), "chunk": c}
+            for c, s, i in hits
+        ]
+        def sse():
+            start_payload = {"sources": sources}
+            yield f"event: start\ndata: {json.dumps(start_payload)}\n\n"
+            contexts = [c for c, _, _ in hits]
+            final = []
+            for token in stream_answer(req.question, contexts):
+                final.append(token)
+                yield f"event: token\ndata: {json.dumps(token)}\n\n"
+            answer = ("".join(final)).strip()
+            rag_service._answer_cache[req.question] = {"answer": answer, "hits": hits}
+            end_payload = {"answer": answer}
+            yield f"event: end\ndata: {json.dumps(end_payload)}\n\n"
+        return StreamingResponse(sse(), media_type="text/event-stream")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/ask_meta")
-def ask_meta(req: AskRequest):
-    logger = logging.getLogger("rag")
-    logger.info("HTTP /ask_meta received: %s", (req.question or "").strip())
-    if rag_service is None:
-        raise HTTPException(status_code=503, detail="Service not ready")
-    if not req.question:
-        raise HTTPException(status_code=400, detail="Question required")
-    try:
-        meta = rag_service.ask_meta(req.question)
-        logger.info("HTTP /ask_meta completed: sources=%d", len(meta.get("sources", [])))
-        return meta
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/ask_stream")
-def ask_stream(req: AskRequest):
-    if rag_service is None:
-        raise HTTPException(status_code=503, detail="Service not ready")
-    if not req.question:
-        raise HTTPException(status_code=400, detail="Question required")
-    q = req.question
-    def gen():
-        ans_meta = rag_service.ask_meta(q)
-        contexts = [s["chunk"] for s in ans_meta["sources"]]
-        for token in stream_answer(q, contexts):
-            yield token
-    return StreamingResponse(gen(), media_type="text/plain")
+ 

@@ -19,13 +19,17 @@ export default function App() {
   const [thinking, setThinking] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const MAX_HISTORY = 100;
 
   const onAsk = async (q: string) => {
     setLoading(true);
     setThinking(true);
     const startTs = performance.now();
     const userMsg: Message = { id: uid(), role: "user", content: q };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => {
+      const next = [...prev, userMsg];
+      return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
+    });
     try {
       let created = false;
       const assistantId = uid();
@@ -43,31 +47,31 @@ export default function App() {
               "perf:firstTokenMs",
               Math.round(performance.now() - startTs)
             );
-            setMessages((prev) => [
-              ...prev,
-              {
+            setMessages((prev) => {
+              const assistantMsg: Message = {
                 id: assistantId,
                 role: "assistant",
                 content: t,
                 sources: startSources,
-              },
-            ]);
+              };
+              const next: Message[] = [...prev, assistantMsg];
+              return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
+            });
           } else {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, content: m.content + t } : m
-              )
-            );
+            setMessages((prev) => prev.map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + t } : m
+            ));
           }
         },
         () => {}
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      setMessages((prev) => [
-        ...prev,
-        { id: uid(), role: "assistant", content: msg },
-      ]);
+      setMessages((prev) => {
+        const errMsg: Message = { id: uid(), role: "assistant", content: msg };
+        const next: Message[] = [...prev, errMsg];
+        return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
+      });
     } finally {
       setThinking(false);
       setLoading(false);
@@ -154,6 +158,12 @@ export default function App() {
                   />
                 }
                 label="Show sources"
+              />
+              <Chip
+                label="Clear conversation"
+                onClick={() => setMessages([])}
+                clickable
+                variant="outlined"
               />
             </Box>
             <Box className="suggestions" aria-label="Try these queries">

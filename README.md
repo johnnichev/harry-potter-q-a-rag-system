@@ -10,18 +10,18 @@
 
 - Backend: RAG pipeline with modules for loading, chunking, embedding, vector search, retrieval, and generation.
 - Frontend: Single page with question input, submit button, answer area, optional sources toggle.
-- Endpoints: `GET /health`, `POST /ask` (unified; streaming + sources supported), `POST /ask_meta` (alias).
+- Endpoints: `GET /health`, `POST /ask` (streaming with sources)
 
 ## Prerequisites
 
-- macOS (Apple Silicon recommended for speed) or Linux/WSL2
+- macOS or Linux/WSL2
 - Python 3.9+ (virtualenv recommended)
 - Node.js 18+ (for Vite + React dev server)
 - Ollama installed and running locally
   - Install: `curl -fsSL https://ollama.com/install.sh | sh` or simply `brew install ollama`
   - Start daemon: `ollama serve`
   - Pull models (chosen defaults):
-    - Embedding: `ollama pull all-minilm` (Ollama name for all-MiniLM-L6-v2)
+    - Embedding: `ollama pull all-minilm`
     - Generation: `ollama pull llama3.1:8b`
   - Verify: `curl http://localhost:11434` returns a JSON banner
 
@@ -35,14 +35,23 @@
 3. Ensure Ollama is running and models are pulled (see prerequisites)
 4. Start the server from the repository root (new entrypoint)
    - `uvicorn backend.app.api.main:app --reload --port 8000`
-5. Configuration via environment variables (optional)
-   - `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`)
-   - `EMBED_MODEL` (default `nomic-embed-text`)
-   - `LLM_MODEL` (default `llama3.1:8b`)
-   - `CHUNK_SIZE` (default `500`), `CHUNK_OVERLAP` (default `50`), `TOP_K` (default `4`)
+5. Configuration constants
+   - All backend settings are defined as constants in `backend/app/config/config.py` for simplicity:
+     - `OLLAMA_BASE_URL` (`http://127.0.0.1:11434`)
+     - `EMBED_MODEL` (`all-minilm`)
+     - `LLM_MODEL` (`llama3.1:8b`)
+     - `CHUNK_SIZE` (`250`), `CHUNK_OVERLAP` (`50`), `TOP_K` (`4`)
+     - `MAX_TOKENS` (`512`), `MAX_CONTEXT_CHARS` (`8000`)
+   - Edit that file directly to change behavior; no environment variables are required. For production environments we would adapt and use a `.env` file.
 6. Health check
    - `curl http://localhost:8000/health`
    - Returns diagnostics JSON (status, models, chunk count). If not ready, ensure Ollama is running and models are pulled.
+
+### Chunk Size Rationale
+
+- Ollama embedding models have token limits; very long chunks are truncated, reducing retrieval fidelity.
+- Default `CHUNK_SIZE=250` and `CHUNK_OVERLAP=50` keep chunks within typical embedding token budgets and maintain recall.
+- To adjust, edit the constants in `backend/app/config/config.py` and restart the backend.
 
 ## Frontend Setup (React + Vite)
 
@@ -66,9 +75,7 @@
 - Backend unit tests: `pytest -q` from repository root
 - Manual API checks:
   - Health: `curl http://localhost:8000/health`
-  - /ask non-stream plain: `curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?","stream":false,"include_sources":false,"format":"text"}'`
-  - /ask non-stream JSON: `curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?","stream":false,"include_sources":true,"format":"json"}'`
-  - /ask stream SSE: `curl -N -H 'Accept: text/event-stream' -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?","stream":true,"include_sources":true,"format":"json"}' http://localhost:8000/ask`
+  - /ask stream SSE: `curl -N -H 'Accept: text/event-stream' -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?"}' http://localhost:8000/ask`
   - Embeddings test (Ollama): `curl -s http://localhost:11434/api/embeddings -d '{"model":"all-minilm","prompt":"test"}'`
   - Generation test (Ollama): `curl -s http://localhost:11434/api/generate -d '{"model":"llama3.1:8b","prompt":"hello"}'`
 - Benchmark: `python backend/scripts/benchmark.py`
@@ -82,18 +89,15 @@
 
 - Text is chunked with overlap to balance recall and latency.
 - Embeddings and vector index are precomputed at startup and kept in memory.
-- `/ask` returns the final answer as a plain string per requirement.
 
 ### Model Choice (Why these defaults)
 
 - Embeddings: `all-minilm` balances retrieval quality and speed on local CPUs, and is widely used for sentence embeddings.
 - Generation: `llama3.1:8b` improves response quality and reasoning over 7B family models while remaining feasible locally. Expect slightly higher memory and latency than 7B, with better answer fidelity for nuanced questions.
-- You can override via env: `EMBED_MODEL` and `LLM_MODEL`.
+- To change models, edit `EMBED_MODEL` and `LLM_MODEL` in `backend/app/config/config.py`.
 
 ## Optional Enhancements
 
-- Citations endpoint `POST /ask_meta` exposing source chunks and scores
-- Streamed responses `POST /ask_stream` for improved perceived latency
 - Frontend `Show sources` toggle to inspect retrieved context
 - In-memory query cache to accelerate repeated questions
 - Preflight model checks with graceful readiness reporting
@@ -133,7 +137,7 @@ backend/
       rag.py           # Orchestration service
       schemas.py       # Pydantic models
     config/
-      config.py        # Environment-backed configuration
+      config.py        # Configuration constants
     services/          # Loader, chunker, embedding, vectorstore, retriever, generator, preflight
     utils/
       logger.py        # Logging setup
