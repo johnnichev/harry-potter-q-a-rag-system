@@ -40,18 +40,26 @@ class RAGService:
             return ""
         if question in self._answer_cache:
             return self._answer_cache[question]["answer"]
-        logger.info("RAG: query embed and retrieve: '%s'", question)
+        t0 = time.time()
+        logger.info("RAG: /ask start: '%s'", question)
         qv = embed_query(question)
         hits = retrieve(self.store, qv, TOP_K)
         contexts = [h[0] for h in hits]
+        logger.info(
+            "RAG: retrieved %d hits: %s",
+            len(hits),
+            ", ".join([f"{i}:{s:.3f}" for _, s, i in hits]) if hits else "none",
+        )
+        t1 = time.time()
         ans = generate_answer(question, contexts)
+        t2 = time.time()
+        logger.info("RAG: generation done (retrieve=%.2fs, generate=%.2fs)", t1 - t0, t2 - t1)
         self._answer_cache[question] = {"answer": ans, "hits": hits}
         return ans
 
     def ask_meta(self, question: str):
         logger = logging.getLogger("rag")
-        logger.info("RAG: ask_meta for '%s'", question)
-        # Reuse cached retrieval/answer when available to keep answers consistent
+        logger.info("RAG: /ask_meta start: '%s'", question)
         record = self._answer_cache.get(question)
         if record is None:
             qv = embed_query(question)
@@ -62,4 +70,21 @@ class RAGService:
             self._answer_cache[question] = record
         ans = record["answer"]
         hits = record["hits"]
+        logger.info(
+            "RAG: /ask_meta retrieved %d hits: %s",
+            len(hits),
+            ", ".join([f"{i}:{s:.3f}" for _, s, i in hits]) if hits else "none",
+        )
         return {"answer": ans, "sources": [{"chunk": c, "score": float(s), "index": int(i)} for c, s, i in hits]}
+
+    def retrieve_hits(self, question: str):
+        logger = logging.getLogger("rag")
+        logger.info("RAG: retrieve_hits for '%s'", question)
+        qv = embed_query(question)
+        hits = retrieve(self.store, qv, TOP_K)
+        logger.info(
+            "RAG: retrieved %d hits: %s",
+            len(hits),
+            ", ".join([f"{i}:{s:.3f}" for _, s, i in hits]) if hits else "none",
+        )
+        return hits

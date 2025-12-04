@@ -10,7 +10,7 @@
 
 - Backend: RAG pipeline with modules for loading, chunking, embedding, vector search, retrieval, and generation.
 - Frontend: Single page with question input, submit button, answer area, optional sources toggle.
-- Endpoints: `GET /health`, `POST /ask` (returns plain text), `POST /ask_meta`, `POST /ask_stream` (optional).
+- Endpoints: `GET /health`, `POST /ask` (unified; streaming + sources supported), `POST /ask_meta` (alias).
 
 ## Prerequisites
 
@@ -44,7 +44,7 @@
    - `curl http://localhost:8000/health`
    - Returns diagnostics JSON (status, models, chunk count). If not ready, ensure Ollama is running and models are pulled.
 
-## Frontend Setup (React + Vite + Material UI)
+## Frontend Setup (React + Vite)
 
 1. `cd frontend && npm install`
 2. Start dev server: `npm run dev`
@@ -55,10 +55,9 @@
    - Toggle "Show sources" to view retrieved chunks and similarity scores
 
 ## Usage
-
 - Open the frontend at `http://localhost:5173/`
 - Enter a question based on Chapter 1 and click `Ask Chapter`
-- Optional: toggle `Show sources` to inspect the retrieved context
+- Toggle `Show sources` and `Stream answer` as desired
 - The backend answers strictly from `harry-potter-the-philosophers-stone-chapter-1.txt`
 
 ## Testing
@@ -66,8 +65,10 @@
 - Backend unit tests: `pytest -q` from repository root
 - Manual API checks:
   - Health: `curl http://localhost:8000/health`
-  - Ask: `curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{"question": "Where do the Dursleys live?"}'`
-  - Embeddings test (Ollama): `curl -s http://localhost:11434/api/embeddings -d '{"model":"nomic-embed-text","prompt":"test"}'`
+  - /ask non-stream plain: `curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?","stream":false,"include_sources":false,"format":"text"}'`
+  - /ask non-stream JSON: `curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?","stream":false,"include_sources":true,"format":"json"}'`
+  - /ask stream SSE: `curl -N -H 'Accept: text/event-stream' -H 'Content-Type: application/json' -d '{"question":"Where do the Dursleys live?","stream":true,"include_sources":true,"format":"json"}' http://localhost:8000/ask`
+  - Embeddings test (Ollama): `curl -s http://localhost:11434/api/embeddings -d '{"model":"all-minilm","prompt":"test"}'`
   - Generation test (Ollama): `curl -s http://localhost:11434/api/generate -d '{"model":"llama3.1:8b","prompt":"hello"}'`
 - Benchmark: `python backend/scripts/benchmark.py`
 
