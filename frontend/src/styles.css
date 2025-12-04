@@ -1,25 +1,5 @@
 :root {
-  color-scheme: light dark;
-  --bg: #0b0f14;
-  --panel: #11161d;
-  --border: #1f2937;
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-  --primary: #3b82f6;
-  --bubble-user: #2563eb;
-  --bubble-assistant: #11161d;
-}
-[data-theme="light"] {
-  --bg: #fafafb;
-  --panel: #ffffff;
-  --border: #e5e7eb;
-  --text: #111827;
-  --muted: #6b7280;
-  --primary: #1a73e8;
-  --bubble-user: #1a73e8;
-  --bubble-assistant: #ffffff;
-}
-[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0b0f14;
   --panel: #11161d;
   --border: #1f2937;
@@ -81,14 +61,7 @@ button:disabled {
   color: var(--muted);
   margin-top: 4px;
 }
-.brand .theme {
-  margin-top: 10px;
-  display: flex;
-  gap: 12px;
-}
-.brand .theme label {
-  color: var(--text);
-}
+
 .chat {
   display: flex;
   flex-direction: column;

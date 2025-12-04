@@ -19,9 +19,6 @@ export default function App() {
   const [thinking, setThinking] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [theme, setTheme] = useState<string>(
-    () => localStorage.getItem("hp_theme") || "dark"
-  );
 
   useEffect(() => {
     try {
@@ -35,17 +32,6 @@ export default function App() {
       localStorage.setItem("hp_chat_messages", JSON.stringify(messages));
     } catch {}
   }, [messages]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem("hp_theme", theme);
-    } catch {}
-  }, [theme]);
-
-  useEffect(() => {
-    setTheme("dark");
-  }, []);
 
   const onAsk = async (q: string) => {
     setLoading(true);

@@ -51,8 +51,8 @@
 3. Open http://localhost:5173/
 4. Configure API base URL via `VITE_API_BASE_URL` in your env (optional; defaults to `http://localhost:8000`)
 5. UI/UX
-   - Polished Material UI design with accessible labels and responsive layout
-   - Toggle "Show sources" to view retrieved chunks and similarity scores
+   - Polished design with accessible labels and responsive layout
+   - Use the "Show sources" toggle to view retrieved chunks and similarity scores
 
 ## Usage
 
@@ -76,7 +76,7 @@
 ## Implementation Notes
 
 - Frontend now uses a single conversation thread stored in localStorage (`hp_chat_messages`).
-- Dark mode is the default; Light mode is available via toggle. Colors use accessible contrast.
+- Single consistent design with accessible contrast; no theme toggles.
 - Input clears and refocuses on send for fast follow-ups.
 - A loading indicator appears before first tokens with subtle animation.
 
@@ -138,7 +138,7 @@ backend/
 frontend/
   src/
     App.tsx           # Main page
-    components/       # AskForm, Answer (Material UI)
+    components/       # AskForm, Answer
     api/client.ts     # API calls to backend
   package.json, tsconfig.json, vite.config.ts, index.html
 README.md
