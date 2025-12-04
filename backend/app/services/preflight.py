@@ -17,7 +17,7 @@ def check_models() -> bool:
     try:
         client.embeddings(model=EMBED_MODEL, prompt="test")
         logger.info("Preflight: embeddings model '%s' OK", EMBED_MODEL)
-        client.generate(model=LLM_MODEL, prompt="ok")
+        client.chat(model=LLM_MODEL, messages=[{"role": "user", "content": "ok"}])
         logger.info("Preflight: generation model '%s' OK", LLM_MODEL)
         return True
     except Exception as e:
