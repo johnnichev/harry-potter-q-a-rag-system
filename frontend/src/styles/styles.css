@@ -156,7 +156,7 @@ button:disabled {
 
 .chat .toggles {
   display: flex;
-  gap: 12px;
+  justify-content: space-between;
   margin-bottom: 8px;
 }
 .suggestions {

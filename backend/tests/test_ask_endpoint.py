@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from backend.app.api.main import app
 
 
-def test_ask_stream_sse_default():
+def test_ask_stream_sse():
     client = TestClient(app)
     res = client.post(
         "/ask",

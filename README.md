@@ -126,7 +126,7 @@
 - This repository contains both backend and frontend
 - Follow setup above; confirm unit tests pass and manual queries work
 
-## Project Structure (updated)
+## Project Structure
 
 ```
 backend/
