@@ -55,9 +55,10 @@
    - Toggle "Show sources" to view retrieved chunks and similarity scores
 
 ## Usage
-- Open the frontend at `http://localhost:5173/`
-- Enter a question based on Chapter 1 and click `Ask Chapter`
-- Toggle `Show sources` and `Stream answer` as desired
+
+- Open `http://localhost:5173/`
+- Single-chat interface streams answers into a chat thread
+- Toggle `Show sources` to reveal citations under assistant messages
 - The backend answers strictly from `harry-potter-the-philosophers-stone-chapter-1.txt`
 
 ## Testing
@@ -73,6 +74,11 @@
 - Benchmark: `python backend/scripts/benchmark.py`
 
 ## Implementation Notes
+
+- Frontend now uses a single conversation thread stored in localStorage (`hp_chat_messages`).
+- Dark mode is the default; Light mode is available via toggle. Colors use accessible contrast.
+- Input clears and refocuses on send for fast follow-ups.
+- A loading indicator appears before first tokens with subtle animation.
 
 - Text is chunked with overlap to balance recall and latency.
 - Embeddings and vector index are precomputed at startup and kept in memory.
