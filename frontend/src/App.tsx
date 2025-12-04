@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AskForm from "./components/AskForm";
 import { askStream } from "./api/client";
 import { Message, Source } from "./types";
@@ -19,23 +19,6 @@ export default function App() {
   const [thinking, setThinking] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("hp_chat_messages");
-      if (raw) setMessages(JSON.parse(raw));
-    } catch {
-      // no messages in local storage
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("hp_chat_messages", JSON.stringify(messages));
-    } catch {
-      // failed to save messages to local storage
-    }
-  }, [messages]);
 
   const onAsk = async (q: string) => {
     setLoading(true);
@@ -182,6 +165,8 @@ export default function App() {
                 "Who are Dumbledore and McGonagall?",
                 "Who turns into a cat at the beginning?",
                 "What device does Dumbledore use to dim the lights?",
+                "Who lends Hagrid the motorcycle?",
+                "What shape is Harry's scar?",
               ].map((s) => (
                 <Chip
                   key={s}

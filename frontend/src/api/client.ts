@@ -96,7 +96,14 @@ export async function askStream(
         }
         onStart(payload);
       } else if (evt === "token") {
-        onToken(dataRaw);
+        let token = dataRaw;
+        try {
+          const parsed = JSON.parse(dataRaw);
+          token = typeof parsed === "string" ? parsed : String(parsed);
+        } catch {
+          /* empty */
+        }
+        onToken(token);
       } else if (evt === "end") {
         onEnd({});
       }
