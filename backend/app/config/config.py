@@ -1,3 +1,6 @@
+"""
+Adheres to project-instructions.md: configuration isolated under app/config.
+"""
 import os
 from pathlib import Path
 

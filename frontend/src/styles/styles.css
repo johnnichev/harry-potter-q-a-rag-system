@@ -126,10 +126,6 @@ button:disabled {
 .chat .controls {
   transition: padding 0.2s ease, max-width 0.2s ease, margin 0.2s ease,
     box-shadow 0.2s ease, border-radius 0.2s ease;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  border-bottom-left-radius: 0px;
-  border-bottom-right-radius: 0px;
 }
 
 .chat {

@@ -1,3 +1,7 @@
+"""
+Adheres to project-instructions.md: minimal API, clear module boundaries.
+This entrypoint is organized under app/api with core and services separated.
+"""
 import os
 import json
 import logging
@@ -5,12 +9,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 
-from .config import CORS_ORIGINS
-from .schemas import AskRequest
-from .rag import RAGService
-from .services.generator import stream_answer
-from .services.preflight import check_models
-from .utils.logger import setup_logging
+from ..config.config import CORS_ORIGINS
+from ..core.schemas import AskRequest
+from ..core.rag import RAGService
+from ..services.generator import stream_answer
+from ..services.preflight import check_models
+from ..utils.logger import setup_logging
 
 logger = setup_logging()
 app = FastAPI()
@@ -72,30 +76,25 @@ def ask(req: AskRequest):
         fmt = req.format or ("json" if stream else "text")
 
         if stream:
-            # Fast path: retrieve hits only; do NOT pre-generate full answer
             hits = rag_service.retrieve_hits(req.question)
             sources = [
                 {"index": int(i), "score": float(s), "chunk": c if include_sources else None}
                 for c, s, i in hits
             ]
             def sse():
-                # Start event with sources
                 start_payload = {"sources": sources}
                 yield f"event: start\ndata: {json.dumps(start_payload)}\n\n"
-                # Now stream tokens
                 contexts = [c for c, _, _ in hits]
                 final = []
                 for token in stream_answer(req.question, contexts):
                     final.append(token)
                     yield f"event: token\ndata: {json.dumps(token)}\n\n"
-                # Cache final answer with hits
                 answer = ("".join(final)).strip()
                 rag_service._answer_cache[req.question] = {"answer": answer, "hits": hits}
                 end_payload = {"answer": answer}
                 yield f"event: end\ndata: {json.dumps(end_payload)}\n\n"
             return StreamingResponse(sse(), media_type="text/event-stream")
         else:
-            # Non-stream: reuse cache when available, else compute
             record = rag_service._answer_cache.get(req.question)
             if record is None:
                 meta = rag_service.ask_meta(req.question)
@@ -121,7 +120,6 @@ def ask_meta(req: AskRequest):
     if not req.question:
         raise HTTPException(status_code=400, detail="Question required")
     try:
-        # Alias to unified logic: return non-stream JSON with sources
         meta = rag_service.ask_meta(req.question)
         logger.info("HTTP /ask_meta completed: sources=%d", len(meta.get("sources", [])))
         return meta

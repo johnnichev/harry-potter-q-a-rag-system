@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from backend.app.main import app
+from backend.app.api.main import app
 
 
 def test_ask_plain_text():

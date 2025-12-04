@@ -33,8 +33,8 @@
 2. Install dependencies
    - `pip install -r backend/requirements.txt`
 3. Ensure Ollama is running and models are pulled (see prerequisites)
-4. Start the server from the repository root
-   - `uvicorn backend.app.main:app --reload --port 8000`
+4. Start the server from the repository root (new entrypoint)
+   - `uvicorn backend.app.api.main:app --reload --port 8000`
 5. Configuration via environment variables (optional)
    - `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434`)
    - `EMBED_MODEL` (default `nomic-embed-text`)
@@ -122,24 +122,35 @@
 - This repository contains both backend and frontend
 - Follow setup above; confirm unit tests pass and manual queries work
 
-## Project Structure
+## Project Structure (updated)
 
 ```
 backend/
   app/
-    main.py            # FastAPI app and endpoints
-    config.py          # Environment-backed configuration
-    rag.py             # Orchestration service
-    schemas.py         # Pydantic models
+    api/
+      main.py          # FastAPI app and endpoints (only entrypoint)
+    core/
+      rag.py           # Orchestration service
+      schemas.py       # Pydantic models
+    config/
+      config.py        # Environment-backed configuration
     services/          # Loader, chunker, embedding, vectorstore, retriever, generator, preflight
+    utils/
+      logger.py        # Logging setup
   requirements.txt
   tests/               # Unit tests (pytest)
   scripts/benchmark.py # Latency benchmark
 frontend/
   src/
-    App.tsx           # Main page
-    components/       # AskForm, Answer
-    api/client.ts     # API calls to backend
+    app/App.tsx        # Root app component
+    features/chat/
+      components/      # AskForm, Answer
+      __tests__/       # feature tests
+    lib/
+      api/client.ts    # API client
+      types.ts         # Shared types
+    styles/styles.css  # App styles
+    vite-env.d.ts      # Vite type references
   package.json, tsconfig.json, vite.config.ts, index.html
 README.md
 harry-potter-the-philosophers-stone-chapter-1.txt

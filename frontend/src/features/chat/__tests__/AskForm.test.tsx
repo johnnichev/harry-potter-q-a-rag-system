@@ -12,7 +12,6 @@ test('Ask button disabled with empty input and during loading', async () => {
   await userEvent.type(input, 'Who is Harry Potter?')
   expect(button).not.toBeDisabled()
 
-  // When loading, button is disabled and shows Asking…
   rerender(<AskForm onAsk={onAsk} loading={true} />)
   const loadingButton = screen.getByRole('button', { name: /asking/i })
   expect(loadingButton).toBeDisabled()

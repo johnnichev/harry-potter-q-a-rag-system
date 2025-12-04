@@ -1,9 +1,9 @@
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import App from '../App'
-import { Source } from '../types'
+import App from '../../../app/App'
+import { Source } from '../../../lib/types'
 
-vi.mock('../api/client', () => ({
+vi.mock('../../../lib/api/client', () => ({
   askStream: async (
     _q: string,
     onStart: (_s: { sources: Source[] }) => void,
@@ -26,6 +26,5 @@ test('Shows loading dots before first token and streams assistant message', asyn
     await userEvent.type(input, 'Test question')
     await userEvent.click(button)
   })
-  // After streaming begins, assistant message should be present
   expect(await screen.findByText('Hello, world')).toBeInTheDocument()
 })

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import AskForm from "./components/AskForm";
-import { askStream } from "./api/client";
-import { Message, Source } from "./types";
+import AskForm from "../features/chat/components/AskForm";
+import { askStream } from "../lib/api/client";
+import { Message, Source } from "../lib/types";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";

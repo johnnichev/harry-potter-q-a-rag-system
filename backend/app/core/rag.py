@@ -1,3 +1,7 @@
+"""
+Adheres to project-instructions.md: core orchestration separated under app/core.
+Provides RAGService for retrieval and generation.
+"""
 import time
 import logging
 from pathlib import Path
@@ -5,13 +9,13 @@ from typing import Optional
 
 import numpy as np
 
-from .config import CHAPTER_PATH, CHUNK_SIZE, CHUNK_OVERLAP, TOP_K, EMBED_MODEL
-from .services.loader import load_text
-from .services.chunker import chunk_text
-from .services.embedding import embed_texts, embed_query
-from .services.vectorstore import InMemoryVectorStore
-from .services.retriever import retrieve
-from .services.generator import generate_answer
+from ..config.config import CHAPTER_PATH, CHUNK_SIZE, CHUNK_OVERLAP, TOP_K, EMBED_MODEL
+from ..services.loader import load_text
+from ..services.chunker import chunk_text
+from ..services.embedding import embed_texts, embed_query
+from ..services.vectorstore import InMemoryVectorStore
+from ..services.retriever import retrieve
+from ..services.generator import generate_answer
 
 
 class RAGService:

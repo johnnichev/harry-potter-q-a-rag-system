@@ -18,12 +18,16 @@ export default function AskForm({ onAsk, loading }: Props) {
     const toSend = q;
     setQ("");
     await onAsk(toSend);
-    // refocus for quick subsequent questions
     inputRef.current?.focus();
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} aria-label="Ask a question" sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      aria-label="Ask a question"
+      sx={{ display: "flex", gap: 1, alignItems: "center" }}
+    >
       <TextField
         inputRef={inputRef}
         autoFocus

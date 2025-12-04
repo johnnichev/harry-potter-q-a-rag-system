@@ -101,7 +101,7 @@ export async function askStream(
           const parsed = JSON.parse(dataRaw);
           token = typeof parsed === "string" ? parsed : String(parsed);
         } catch {
-          /* empty */
+          void 0;
         }
         onToken(token);
       } else if (evt === "end") {

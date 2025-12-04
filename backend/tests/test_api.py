@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from backend.app.main import app
+from backend.app.api.main import app
 
 
 def test_health():
@@ -12,4 +12,3 @@ def test_ask_bad_request():
     client = TestClient(app)
     res = client.post("/ask", json={"question": ""})
     assert res.status_code in (400, 503)
-

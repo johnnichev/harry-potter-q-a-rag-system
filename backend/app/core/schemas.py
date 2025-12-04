@@ -1,3 +1,6 @@
+"""
+Adheres to project-instructions.md: domain models under app/core.
+"""
 from typing import Optional
 from pydantic import BaseModel
 
