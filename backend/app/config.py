@@ -9,7 +9,7 @@ CHAPTER_FILENAME = os.getenv(
 CHAPTER_PATH = Path(os.getenv("CHAPTER_PATH", PROJECT_ROOT / CHAPTER_FILENAME))
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "all-minilm")
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3.1:8b")
 
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "500"))

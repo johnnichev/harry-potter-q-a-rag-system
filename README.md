@@ -18,11 +18,11 @@
 - Python 3.9+ (virtualenv recommended)
 - Node.js 18+ (for Vite + React dev server)
 - Ollama installed and running locally
-  - Install: `curl -fsSL https://ollama.com/install.sh | sh` (or use the macOS app)
+  - Install: `curl -fsSL https://ollama.com/install.sh | sh` or simply `brew install ollama`
   - Start daemon: `ollama serve`
-  - Pull models:
-    - `ollama pull nomic-embed-text`
-    - `ollama pull llama3.1:8b` (or `llama2:7b`)
+  - Pull models (chosen defaults):
+    - Embedding: `ollama pull all-minilm` (Ollama name for all-MiniLM-L6-v2)
+    - Generation: `ollama pull llama3.1:8b`
   - Verify: `curl http://localhost:11434` returns a JSON banner
 
 ## Backend Setup (FastAPI)
@@ -42,7 +42,7 @@
    - `CHUNK_SIZE` (default `500`), `CHUNK_OVERLAP` (default `50`), `TOP_K` (default `4`)
 6. Health check
    - `curl http://localhost:8000/health`
-   - Returns `{"status":"ok"}` when ready; `503 Service not ready` if Ollama/models are unavailable
+   - Returns diagnostics JSON (status, models, chunk count). If not ready, ensure Ollama is running and models are pulled.
 
 ## Frontend Setup (React + Vite + Material UI)
 
@@ -67,6 +67,8 @@
 - Manual API checks:
   - Health: `curl http://localhost:8000/health`
   - Ask: `curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{"question": "Where do the Dursleys live?"}'`
+  - Embeddings test (Ollama): `curl -s http://localhost:11434/api/embeddings -d '{"model":"nomic-embed-text","prompt":"test"}'`
+  - Generation test (Ollama): `curl -s http://localhost:11434/api/generate -d '{"model":"llama3.1:8b","prompt":"hello"}'`
 - Benchmark: `python backend/scripts/benchmark.py`
 
 ## Implementation Notes
@@ -74,6 +76,12 @@
 - Text is chunked with overlap to balance recall and latency.
 - Embeddings and vector index are precomputed at startup and kept in memory.
 - `/ask` returns the final answer as a plain string per requirement.
+
+### Model Choice (Why these defaults)
+
+- Embeddings: `all-minilm` balances retrieval quality and speed on local CPUs, and is widely used for sentence embeddings.
+- Generation: `llama3.1:8b` improves response quality and reasoning over 7B family models while remaining feasible locally. Expect slightly higher memory and latency than 7B, with better answer fidelity for nuanced questions.
+- You can override via env: `EMBED_MODEL` and `LLM_MODEL`.
 
 ## Optional Enhancements
 
